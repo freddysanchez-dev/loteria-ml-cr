@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Analytics · Lotería Nacional CR</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #0a1628; color: #f5f7fa; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 40px; }
+        .title { color: #c8102e; text-align: center; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1300px; margin: 30px auto; }
+        .panel { background: #132845; border: 1px solid #1e3a5f; border-radius: 12px; padding: 20px; }
+        .nav { position: absolute; top: 20px; right: 30px; }
+        .nav a { color: #7ed6a5; text-decoration: none; margin-left: 16px; font-size: 14px; }
+        .nav a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/">Inicio</a>
+        <a href="/analytics">Analytics</a>
+        <a href="/api/prediccion">API</a>
+    </div>
+
+    <h1 class="title">📊 Analytics · Distribución Histórica</h1>
+    <p style="text-align:center; color:#8aa4c2;">
+        Verificación estadística de la extracción (media esperada: 49.5 · std: 28.9)
+    </p>
+
+    <div class="grid">
+        <div class="panel">
+            <h3 style="margin-top:0; color:#c8102e;">Distribución de números (0–99)</h3>
+            <canvas id="histChart"></canvas>
+        </div>
+        <div class="panel">
+            <h3 style="margin-top:0; color:#c8102e;">Top 10 más frecuentes</h3>
+            <canvas id="topChart"></canvas>
+        </div>
+        <div class="panel">
+            <h3 style="margin-top:0; color:#c8102e;">Sorteos por tipo</h3>
+            <canvas id="sorteoChart"></canvas>
+        </div>
+        <div class="panel">
+            <h3 style="margin-top:0; color:#c8102e;">Evolución temporal (media móvil 30)</h3>
+            <canvas id="tiempoChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        async function cargar() {
+            const r = await fetch('/api/analytics');
+            return await r.json();
+        }
+
+        cargar().then(data => {
+            new Chart(document.getElementById('histChart'), {
+                type: 'bar',
+                data: {
+                    labels: Array.from({length: 100}, (_, i) => i),
+                    datasets: [{ label: 'Frecuencia', data: data.conteo_numeros, backgroundColor: '#c8102e' }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#8aa4c2', maxTicksLimit: 20 } },
+                        y: { ticks: { color: '#8aa4c2' } }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('topChart'), {
+                type: 'bar',
+                data: {
+                    labels: data.top10.map(d => d.numero),
+                    datasets: [{ label: 'Apariciones', data: data.top10.map(d => d.frecuencia), backgroundColor: '#ffd166' }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#8aa4c2' } },
+                        y: { ticks: { color: '#8aa4c2' } }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById('sorteoChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data.por_sorteo),
+                    datasets: [{
+                        data: Object.values(data.por_sorteo),
+                        backgroundColor: ['#c8102e', '#ffd166', '#7ed6a5', '#4a90e2']
+                    }]
+                },
+                options: { plugins: { legend: { labels: { color: '#f5f7fa' } } } }
+            });
+
+            new Chart(document.getElementById('tiempoChart'), {
+                type: 'line',
+                data: {
+                    labels: data.fechas,
+                    datasets: [{
+                        label: 'Media móvil 30',
+                        data: data.media_movil,
+                        borderColor: '#7ed6a5',
+                        backgroundColor: 'rgba(126,214,165,0.1)',
+                        fill: true, tension: 0.3, pointRadius: 0
+                    }]
+                },
+                options: {
+                    plugins: { legend: { labels: { color: '#f5f7fa' } } },
+                    scales: {
+                        x: { ticks: { color: '#8aa4c2', maxTicksLimit: 10 } },
+                        y: { ticks: { color: '#8aa4c2' } }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
